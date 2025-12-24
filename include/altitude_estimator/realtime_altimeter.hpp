@@ -22,8 +22,9 @@ class AltitudeEstimationSystem;
 /**
  * @brief Production-ready real-time altitude estimator
  * 
- * Init: Feed N frames with known altitude (GPS/barometer).
- * Runtime: Input image + RPY, output AltimeterResult.
+ * Two-phase operation:
+ * 1. INIT: Feed N frames with known altitude via addInitFrame()
+ * 2. RUNTIME: Process frames with just image + RPY via process()
  * 
  * Example usage:
  * ```cpp
@@ -34,12 +35,12 @@ class AltitudeEstimationSystem;
  *     10     // init_frames
  * );
  * 
- * // Initialization phase (first 10 frames with known altitude)
+ * // Phase 1: Initialization (feed frames with known altitude from GPS/barometer)
  * for (int i = 0; i < 10; i++) {
- *     auto result = altimeter->process(image, rpy, known_altitude);
+ *     altimeter->addInitFrame(image, rpy, gps_altitude);
  * }
  * 
- * // Runtime phase (no known altitude needed)
+ * // Phase 2: Runtime (just image + RPY, outputs estimated altitude)
  * while (true) {
  *     auto result = altimeter->process(image, rpy);
  *     if (result.is_valid) {
@@ -73,25 +74,63 @@ public:
     
     ~RealtimeAltimeter();
     
+    // =========================================================================
+    // INITIALIZATION PHASE
+    // =========================================================================
+    
     /**
-     * @brief Process a single frame and return altitude estimate
+     * @brief Add an initialization frame with known altitude
+     * 
+     * Call this for the first N frames (init_frames) with altitude from
+     * GPS, barometer, or other ground truth source.
      * 
      * @param image BGR image (HxWx3 or HxW grayscale)
      * @param rpy (roll, pitch, yaw) in RADIANS
      *            - roll: rotation about forward axis (positive = right wing down)
      *            - pitch: rotation about right axis (positive = nose up)
      *            - yaw: rotation about down axis (positive = clockwise from above)
-     * @param known_altitude Ground truth altitude in meters (required during init)
+     * @param known_altitude Ground truth altitude in meters (from GPS/barometer)
+     * @return true if initialization is now complete, false if more frames needed
+     * 
+     * @throws std::invalid_argument if image dimensions don't match
+     * @throws std::runtime_error if called after initialization is complete
+     */
+    bool addInitFrame(
+        const cv::Mat& image,
+        const std::tuple<double, double, double>& rpy,
+        double known_altitude
+    );
+    
+    /**
+     * @brief Number of init frames still needed
+     * @return 0 if initialization is complete
+     */
+    int initFramesRemaining() const;
+    
+    // =========================================================================
+    // RUNTIME PHASE
+    // =========================================================================
+    
+    /**
+     * @brief Process a single frame and return altitude estimate
+     * 
+     * Call this after initialization is complete. Only requires image and RPY.
+     * 
+     * @param image BGR image (HxWx3 or HxW grayscale)
+     * @param rpy (roll, pitch, yaw) in RADIANS
      * @return AltimeterResult with altitude, uncertainty, validity, and mode
      * 
-     * @throws std::invalid_argument if image dimensions don't match, 
-     *         or known_altitude missing during init
+     * @throws std::invalid_argument if image dimensions don't match
+     * @throws std::runtime_error if called before initialization is complete
      */
     AltimeterResult process(
         const cv::Mat& image,
-        const std::tuple<double, double, double>& rpy,
-        const std::optional<double>& known_altitude = std::nullopt
+        const std::tuple<double, double, double>& rpy
     );
+    
+    // =========================================================================
+    // STATUS & CONTROL
+    // =========================================================================
     
     /**
      * @brief True if system has completed initialization
@@ -99,7 +138,7 @@ public:
     bool isInitialized() const { return is_initialized_; }
     
     /**
-     * @brief Number of frames processed
+     * @brief Number of frames processed (init + runtime)
      */
     int frameCount() const { return frame_count_; }
     
@@ -114,11 +153,18 @@ public:
     void reset();
     
 private:
+    AltimeterResult processInternal(
+        const cv::Mat& image,
+        const std::tuple<double, double, double>& rpy,
+        const std::optional<double>& known_altitude
+    );
+    
     int width_;
     int height_;
     double fps_;
     int frame_count_ = 0;
     int init_frames_;
+    int init_count_ = 0;
     bool is_initialized_ = false;
     
     std::unique_ptr<AltitudeEstimationSystem> system_;

@@ -62,6 +62,7 @@ int main() {
     
     // PHASE 1: Initialization (10 frames with known altitude)
     std::cout << "\n--- INITIALIZATION PHASE ---" << std::endl;
+    std::cout << "Feeding " << altimeter->initFramesRemaining() << " frames with known altitude..." << std::endl;
     for (int i = 0; i < 10; i++) {
         cv::Mat image = createTestImage(i, width, height);
         
@@ -74,9 +75,11 @@ int main() {
         double known_altitude = 100.0 - i * 2.0;  // Descending from 100m to 82m
         
         try {
-            auto result = altimeter->process(image, {roll, pitch, yaw}, known_altitude);
+            // Use addInitFrame() for initialization
+            bool init_complete = altimeter->addInitFrame(image, {roll, pitch, yaw}, known_altitude);
             
-            std::cout << "Frame " << i << ": " << result.toString() << std::endl;
+            std::cout << "Frame " << i << ": altitude=" << known_altitude 
+                      << "m (init: " << (init_complete ? "complete" : "ongoing") << ")" << std::endl;
         } catch (const std::exception& e) {
             std::cerr << "Error on frame " << i << ": " << e.what() << std::endl;
             return 1;

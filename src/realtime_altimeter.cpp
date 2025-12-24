@@ -68,7 +68,65 @@ RealtimeAltimeter::RealtimeAltimeter(
 
 RealtimeAltimeter::~RealtimeAltimeter() = default;
 
+// =============================================================================
+// INITIALIZATION PHASE
+// =============================================================================
+
+bool RealtimeAltimeter::addInitFrame(
+    const cv::Mat& image,
+    const std::tuple<double, double, double>& rpy,
+    double known_altitude
+) {
+    if (is_initialized_) {
+        throw std::runtime_error(
+            "addInitFrame() called after initialization is complete. "
+            "Use process() for runtime frames."
+        );
+    }
+    
+    // Process with known altitude
+    processInternal(image, rpy, known_altitude);
+    init_count_++;
+    
+    // Check if initialization is now complete
+    if (system_->isInitialized()) {
+        is_initialized_ = true;
+    }
+    
+    return is_initialized_;
+}
+
+int RealtimeAltimeter::initFramesRemaining() const {
+    if (is_initialized_) {
+        return 0;
+    }
+    return std::max(0, init_frames_ - init_count_);
+}
+
+// =============================================================================
+// RUNTIME PHASE
+// =============================================================================
+
 AltimeterResult RealtimeAltimeter::process(
+    const cv::Mat& image,
+    const std::tuple<double, double, double>& rpy
+) {
+    if (!is_initialized_) {
+        throw std::runtime_error(
+            "process() called before initialization is complete. "
+            "Call addInitFrame() " + std::to_string(initFramesRemaining()) + 
+            " more time(s) with known altitude."
+        );
+    }
+    
+    return processInternal(image, rpy, std::nullopt);
+}
+
+// =============================================================================
+// INTERNAL
+// =============================================================================
+
+AltimeterResult RealtimeAltimeter::processInternal(
     const cv::Mat& image,
     const std::tuple<double, double, double>& rpy,
     const std::optional<double>& known_altitude
@@ -79,15 +137,6 @@ AltimeterResult RealtimeAltimeter::process(
     }
     if (image.cols != width_ || image.rows != height_) {
         throw std::invalid_argument("Image size mismatch");
-    }
-    
-    // Check if init altitude is required
-    bool needs_init = !is_initialized_ && frame_count_ < init_frames_;
-    if (needs_init && !known_altitude) {
-        throw std::invalid_argument(
-            "known_altitude is required for first " + std::to_string(init_frames_) +
-            " frames (currently on frame " + std::to_string(frame_count_) + ")"
-        );
     }
     
     // Create timestamp
@@ -115,19 +164,12 @@ AltimeterResult RealtimeAltimeter::process(
     frame.altitude_gt = known_altitude;
     
     // Process frame
-    std::optional<double> provide_altitude = needs_init ? known_altitude : std::nullopt;
-    auto estimate = system_->processFrame(frame, provide_altitude);
+    auto estimate = system_->processFrame(frame, known_altitude);
     
     frame_count_++;
     
-    // Update initialization status
-    if (!is_initialized_ && system_->isInitialized()) {
-        is_initialized_ = true;
-    }
-    
     // Convert to simple result
-    // All modes are valid except LOST: INIT provides known altitude, GEOM/FUSED are computed, 
-    // DEPTH/HOLD are fallbacks but still produce estimates
+    // All modes are valid except LOST
     bool is_valid = (estimate.mode != AltitudeMode::LOST);
     
     AltimeterResult result;
@@ -138,6 +180,10 @@ AltimeterResult RealtimeAltimeter::process(
     
     return result;
 }
+
+// =============================================================================
+// STATUS & CONTROL
+// =============================================================================
 
 std::map<std::string, double> RealtimeAltimeter::getStatus() const {
     return system_->getStatus();
@@ -150,7 +196,12 @@ void RealtimeAltimeter::reset() {
     );
     is_initialized_ = false;
     frame_count_ = 0;
+    init_count_ = 0;
 }
+
+// =============================================================================
+// FACTORY
+// =============================================================================
 
 std::unique_ptr<RealtimeAltimeter> createAltimeter(
     double fx,

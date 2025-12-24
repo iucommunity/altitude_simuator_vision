@@ -15,6 +15,7 @@
 #include <string>
 #include <map>
 #include <cmath>
+#include <limits>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -300,15 +301,25 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
         double pitch_rad = pitch_deg_gt * M_PI / 180.0;
         double yaw_rad = yaw_deg_gt * M_PI / 180.0;
         
-        // Process frame
+        // Process frame using clean two-phase API
         bool is_init = i < init_frames;
-        std::optional<double> known_alt = is_init ? std::make_optional(gt_altitude) : std::nullopt;
         
         auto frame_start = std::chrono::high_resolution_clock::now();
         
         AltimeterResult result;
         try {
-            result = altimeter->process(image, {roll_rad, pitch_rad, yaw_rad}, known_alt);
+            if (is_init) {
+                // INIT PHASE: feed frames with known altitude
+                altimeter->addInitFrame(image, {roll_rad, pitch_rad, yaw_rad}, gt_altitude);
+                // Return a simple result for init frames
+                result.altitude_m = gt_altitude;
+                result.sigma_m = std::numeric_limits<double>::infinity();
+                result.is_valid = true;
+                result.mode = "INIT";
+            } else {
+                // RUNTIME PHASE: just image + RPY, outputs estimated altitude
+                result = altimeter->process(image, {roll_rad, pitch_rad, yaw_rad});
+            }
             std::cout << " done" << std::endl;
         } catch (const cv::Exception& e) {
             std::cerr << "OpenCV ERROR on frame " << i << ": " << e.what() << "\n";
