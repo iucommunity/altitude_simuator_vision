@@ -58,8 +58,9 @@ target_link_libraries(altitude_estimator PUBLIC
     Eigen3::Eigen
 )
 
-# Test executable
+# Test executables
 if(nlohmann_json_FOUND)
+    # Test with image folder
     add_executable(test_drone_captures
         tests/test_drone_captures.cpp
         tests/imu_noise_simulator.cpp
@@ -70,9 +71,20 @@ if(nlohmann_json_FOUND)
         nlohmann_json::nlohmann_json
     )
     
+    # Test with video file
+    add_executable(test_video
+        tests/test_video.cpp
+    )
+    
+    target_link_libraries(test_video PRIVATE
+        altitude_estimator
+        nlohmann_json::nlohmann_json
+    )
+    
     message(STATUS "Building test_drone_captures (nlohmann_json found)")
+    message(STATUS "Building test_video (nlohmann_json found)")
 else()
-    message(WARNING "nlohmann_json not found - test_drone_captures will not be built")
+    message(WARNING "nlohmann_json not found - test executables will not be built")
     message(STATUS "Install with: sudo apt-get install nlohmann-json3-dev (Linux)")
     message(STATUS "            : vcpkg install nlohmann-json (Windows/vcpkg)")
 endif()
