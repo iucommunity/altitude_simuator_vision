@@ -8,6 +8,7 @@
 #include "altitude_estimator/visual_tracker.hpp"
 #include "altitude_estimator/rotation_provider.hpp"
 #include "altitude_estimator/ground_segmenter.hpp"
+#include <iostream>
 
 namespace altitude_estimator {
 
@@ -26,7 +27,14 @@ bool Initializer::addFrame(const FrameData& frame, const std::optional<double>& 
         rotation_provider_->addRPY(*frame.rpy);
     }
     
-    // Track features
+    // Track features - IMPORTANT: call tracker every frame to maintain state
+    if (tracker_) {
+        auto R_CW = rotation_provider_->getR_CW(frame.timestamp);
+        Eigen::Matrix3d* R_rel_ptr = nullptr;
+        tracker_->track(frame.image_gray, frame.timestamp, R_rel_ptr);
+    }
+    
+    // Get rotation for frame
     auto R_CW = rotation_provider_->getR_CW(frame.timestamp);
     
     FrameData frame_copy = frame;

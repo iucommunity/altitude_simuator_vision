@@ -20,7 +20,7 @@ else()
 endif()
 
 # Find dependencies
-find_package(OpenCV 4.0 REQUIRED COMPONENTS core imgproc features2d video calib3d)
+find_package(OpenCV 4.0 REQUIRED COMPONENTS core imgproc features2d video calib3d imgcodecs)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 # Optional: JSON library for metadata reading
@@ -65,7 +65,7 @@ if(nlohmann_json_FOUND)
         tests/imu_noise_simulator.cpp
     )
     
-    target_link_libraries(test_drone_captures
+    target_link_libraries(test_drone_captures PRIVATE
         altitude_estimator
         nlohmann_json::nlohmann_json
     )
@@ -82,7 +82,7 @@ add_executable(example_simple
     examples/example_simple.cpp
 )
 
-target_link_libraries(example_simple
+target_link_libraries(example_simple PRIVATE
     altitude_estimator
 )
 

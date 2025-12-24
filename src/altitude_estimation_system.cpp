@@ -8,6 +8,7 @@
 #include "altitude_estimator/ground_plane_fitter.hpp"
 #include "altitude_estimator/ground_segmenter.hpp"
 #include "altitude_estimator/initializer.hpp"
+#include <iostream>
 
 namespace altitude_estimator {
 
@@ -16,24 +17,24 @@ AltitudeEstimationSystem::AltitudeEstimationSystem(
     const Config& config
 ) : calib_(calibration), cfg_(config) {
     
-    // Create core modules
-    rotation_provider_ = std::make_unique<RotationProvider>(calibration, config);
-    tracker_ = std::make_unique<VisualTracker>(calibration, config);
-    ground_segmenter_ = std::make_unique<GroundSegmenter>(config);
+    // Create core modules - use member variables calib_ and cfg_, not parameters
+    rotation_provider_ = std::make_unique<RotationProvider>(calib_, cfg_);
+    tracker_ = std::make_unique<VisualTracker>(calib_, cfg_);
+    ground_segmenter_ = std::make_unique<GroundSegmenter>(cfg_);
     
     // PRIMARY PATH
     homography_altimeter_ = std::make_unique<HomographyAltimeter>(
-        calibration, config, calibration.conventions
+        calib_, cfg_, calib_.conventions
     );
-    smoother_ = std::make_unique<FixedLagLogDistanceSmoother>(config, 30);
+    smoother_ = std::make_unique<FixedLagLogDistanceSmoother>(cfg_, 30);
     
     // SECONDARY PATH
-    pose_engine_ = std::make_unique<PoseEngine>(calibration, config, rotation_provider_.get());
-    ground_fitter_ = std::make_unique<GroundPlaneFitter>(config, calibration.conventions);
+    pose_engine_ = std::make_unique<PoseEngine>(calib_, cfg_, rotation_provider_.get());
+    ground_fitter_ = std::make_unique<GroundPlaneFitter>(cfg_, calib_.conventions);
     
     // Initializer
     initializer_ = std::make_unique<Initializer>(
-        calibration, config, tracker_.get(), rotation_provider_.get()
+        calib_, cfg_, tracker_.get(), rotation_provider_.get()
     );
 }
 

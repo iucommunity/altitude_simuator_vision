@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <string>
+
 namespace altitude_estimator {
 
 /**
@@ -21,7 +23,8 @@ struct Config {
     int max_features = 500;
     double feature_quality = 0.01;
     int min_feature_distance = 10;
-    cv::Size lk_win_size = cv::Size(21, 21);
+    int lk_win_size_width = 21;
+    int lk_win_size_height = 21;
     int lk_max_level = 3;
     
     // Geometric filtering

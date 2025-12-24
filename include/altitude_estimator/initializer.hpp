@@ -39,7 +39,7 @@ private:
     bool completeInitialization();
     
     const CalibrationData& calib_;
-    const Config& cfg_;
+    Config cfg_;  // Store by value
     VisualTracker* tracker_;
     RotationProvider* rotation_provider_;
     

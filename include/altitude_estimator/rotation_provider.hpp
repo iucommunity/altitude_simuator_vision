@@ -8,6 +8,7 @@
 #include "common.hpp"
 #include "calibration.hpp"
 #include "data_types.hpp"
+#include "config.hpp"  // Include full Config, not forward declare
 #include <deque>
 
 namespace altitude_estimator {
@@ -53,7 +54,7 @@ public:
     
 private:
     const CalibrationData& calib_;
-    const Config& config_;
+    Config config_;  // Store by value
     
     std::deque<RPYSample> rpy_buffer_;
     static constexpr size_t MAX_BUFFER_SIZE = 100;

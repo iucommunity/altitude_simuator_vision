@@ -17,7 +17,7 @@ public:
     std::pair<cv::Mat, cv::Mat> segment(const cv::Mat& image, double timestamp);
     
 private:
-    const Config& cfg_;
+    Config cfg_;  // Store by value
     cv::Mat last_mask_;
     double last_timestamp_ = 0.0;
 };

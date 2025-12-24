@@ -25,7 +25,7 @@ public:
     std::optional<double> getAltitude(const Eigen::Vector3d& camera_pos) const;
     
 private:
-    const Config& cfg_;
+    Config cfg_;  // Store by value
     Eigen::Vector3d world_up_;
     std::optional<GroundModel> ground_model_;
 };

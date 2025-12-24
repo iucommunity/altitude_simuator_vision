@@ -51,7 +51,7 @@ public:
     
 private:
     const CalibrationData& calib_;
-    const Config& cfg_;
+    Config cfg_;  // Store by value
     RotationProvider* rotation_provider_;
     
     std::vector<Keyframe> keyframes_;

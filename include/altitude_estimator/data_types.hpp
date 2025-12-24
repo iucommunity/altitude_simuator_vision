@@ -8,6 +8,7 @@
 #include "common.hpp"
 #include <Eigen/Dense>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>  // For cvtColor
 #include <vector>
 #include <map>
 #include <optional>

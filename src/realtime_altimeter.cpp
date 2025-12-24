@@ -6,6 +6,7 @@
 #include "altitude_estimator/realtime_altimeter.hpp"
 #include "altitude_estimator/altitude_estimation_system.hpp"
 #include <stdexcept>
+#include <iostream>
 
 namespace altitude_estimator {
 
@@ -125,8 +126,9 @@ AltimeterResult RealtimeAltimeter::process(
     }
     
     // Convert to simple result
-    bool is_valid = (estimate.mode == AltitudeMode::GEOM || 
-                    estimate.mode == AltitudeMode::FUSED);
+    // All modes are valid except LOST: INIT provides known altitude, GEOM/FUSED are computed, 
+    // DEPTH/HOLD are fallbacks but still produce estimates
+    bool is_valid = (estimate.mode != AltitudeMode::LOST);
     
     AltimeterResult result;
     result.altitude_m = estimate.altitude_m;

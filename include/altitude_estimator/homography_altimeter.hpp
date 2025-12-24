@@ -89,7 +89,7 @@ private:
     double computeSigma(const std::map<std::string, double>& metrics) const;
     
     const CalibrationData& calib_;
-    const Config& config_;
+    Config config_;  // Store by value
     const FrameConventions& conventions_;
     
     Eigen::Vector3d world_up_;

@@ -9,6 +9,7 @@
 #include "altitude_estimator/homography_altimeter.hpp"
 #include <opencv2/calib3d.hpp>
 #include <cmath>
+#include <set>  // For std::set
 
 namespace altitude_estimator {
 
@@ -69,9 +70,11 @@ std::optional<HomographyConstraint> HomographyAltimeter::computeConstraint(
         return std::nullopt;
     }
     
-    // Undistort points
-    auto pts_prev_u = calib_.intrinsics.undistortPoints(pts_prev);
-    auto pts_curr_u = calib_.intrinsics.undistortPoints(pts_curr);
+    // TEMPORARILY DISABLED undistortPoints - causes hard crash (segfault)
+    // TODO: Fix undistortPoints implementation - likely issue with OpenCV matrix construction
+    // Using original points directly (less accurate but functional)
+    const std::vector<cv::Point2f>& pts_prev_u = pts_prev;
+    const std::vector<cv::Point2f>& pts_curr_u = pts_curr;
     
     // Find homography
     cv::Mat H, mask;

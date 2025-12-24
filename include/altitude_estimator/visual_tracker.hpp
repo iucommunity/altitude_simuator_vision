@@ -10,6 +10,7 @@
 #include "config.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/video/tracking.hpp>
+#include <opencv2/features2d.hpp>  // For GFTTDetector
 #include <vector>
 #include <map>
 
@@ -68,7 +69,7 @@ private:
     );
     
     const CalibrationData& calib_;
-    const Config& config_;
+    Config config_;  // Store by value, not reference!
     
     cv::Mat prev_gray_;
     std::vector<cv::Point2f> prev_features_;

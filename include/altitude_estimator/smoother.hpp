@@ -86,7 +86,7 @@ private:
     void solve();
     double huberWeight(double residual, double sigma) const;
     
-    const Config& config_;
+    Config config_;  // Store by value
     int window_size_;
     
     std::deque<SmootherState> states_;
