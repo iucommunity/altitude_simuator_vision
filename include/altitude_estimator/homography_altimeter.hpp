@@ -83,7 +83,8 @@ private:
         const std::vector<cv::Mat>& normals,
         const Eigen::Matrix3d& R_rel_rpy,
         const std::vector<cv::Point2f>& pts_prev,
-        const std::vector<cv::Point2f>& pts_curr
+        const std::vector<cv::Point2f>& pts_curr,
+        const std::vector<bool>& inlier_mask
     );
     
     double computeSigma(const std::map<std::string, double>& metrics) const;

@@ -80,8 +80,11 @@ private:
         const cv::Size& image_shape
     );
     
-    const CalibrationData& calib_;
-    const Config& cfg_;
+    // IMPORTANT: store by value.
+    // RealtimeAltimeter constructs CalibrationData/Config as locals and passes them in;
+    // storing by reference here would dangle and cause undefined behavior (e.g. stuck altitude).
+    CalibrationData calib_;
+    Config cfg_;
     
     // Core modules
     std::unique_ptr<RotationProvider> rotation_provider_;
@@ -105,6 +108,12 @@ private:
     std::optional<Eigen::Matrix3d> prev_R_CW_;
     
     std::optional<HomographyConstraint> last_constraint_;
+
+    // Debug/telemetry (helps diagnose "stuck at anchor")
+    size_t last_track_total_ = 0;
+    size_t last_track_inliers_ = 0;
+    bool last_homography_attempted_ = false;
+    bool last_homography_succeeded_ = false;
 };
 
 } // namespace altitude_estimator

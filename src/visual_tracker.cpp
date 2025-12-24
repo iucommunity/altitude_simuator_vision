@@ -168,8 +168,18 @@ VisualTracker::TrackResult VisualTracker::track(
     if (inlier_pts.size() < config_.max_features / 2) {
         auto new_pts = detectFeatures(gray);
         
-        // Remove points close to existing
-        if (!inlier_pts.empty()) {
+        // IMPORTANT: If we have no surviving tracks, we must bootstrap from scratch.
+        // Otherwise the tracker can get stuck with 0 features forever.
+        if (inlier_pts.empty()) {
+            size_t n_add = std::min(new_pts.size(), size_t(config_.max_features));
+            inlier_pts.reserve(n_add);
+            inlier_ids.reserve(n_add);
+            for (size_t i = 0; i < n_add; ++i) {
+                inlier_pts.push_back(new_pts[i]);
+                inlier_ids.push_back(next_track_id_++);
+            }
+        } else {
+            // Remove points close to existing
             std::vector<cv::Point2f> far_pts;
             for (const auto& np : new_pts) {
                 bool too_close = false;
@@ -185,7 +195,7 @@ VisualTracker::TrackResult VisualTracker::track(
                 }
             }
             
-            size_t n_add = std::min(far_pts.size(), 
+            size_t n_add = std::min(far_pts.size(),
                                    size_t(config_.max_features) - inlier_pts.size());
             for (size_t i = 0; i < n_add; ++i) {
                 inlier_pts.push_back(far_pts[i]);

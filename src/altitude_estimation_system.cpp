@@ -86,26 +86,40 @@ AltitudeEstimate AltitudeEstimationSystem::processFrame(
     
     // Track features
     auto track_result = tracker_->track(frame.image_gray, timestamp, &R_rel_rpy);
+
+    // Telemetry for debugging
+    last_track_total_ = track_result.mask.size();
+    last_track_inliers_ = 0;
+    for (bool m : track_result.mask) {
+        if (m) last_track_inliers_++;
+    }
+    last_homography_attempted_ = false;
+    last_homography_succeeded_ = false;
     
     // Predict smoother
     smoother_->predict(timestamp, dt);
     
     // === PRIMARY PATH: Homography constraint ===
     std::optional<HomographyConstraint> constraint;
-    if (track_result.mask.size() >= size_t(homography_altimeter_->consecutiveFailures())) {
-        std::vector<cv::Point2f> prev_inliers, curr_inliers;
-        for (size_t i = 0; i < track_result.mask.size(); ++i) {
-            if (track_result.mask[i]) {
-                prev_inliers.push_back(track_result.prev_pts[i]);
-                curr_inliers.push_back(track_result.curr_pts[i]);
+    if (track_result.mask.size() > 0) {
+        size_t n_inliers = last_track_inliers_;
+
+        // Check if we have enough inliers (match Python: >= min_inliers)
+        if (n_inliers >= size_t(cfg_.min_inliers)) {
+            last_homography_attempted_ = true;
+            std::vector<cv::Point2f> prev_inliers, curr_inliers;
+            for (size_t i = 0; i < track_result.mask.size(); ++i) {
+                if (track_result.mask[i]) {
+                    prev_inliers.push_back(track_result.prev_pts[i]);
+                    curr_inliers.push_back(track_result.curr_pts[i]);
+                }
             }
-        }
-        
-        if (prev_inliers.size() >= 20) {
+            
             constraint = homography_altimeter_->computeConstraint(
                 prev_inliers, curr_inliers, R_rel_rpy, *R_CW
             );
             last_constraint_ = constraint;
+            last_homography_succeeded_ = constraint.has_value();
         }
     }
     
@@ -174,10 +188,33 @@ std::map<std::string, double> AltitudeEstimationSystem::getStatus() const {
     status["frame_count"] = frame_count_;
     status["altitude"] = smoother_->currentH();
     status["mode"] = static_cast<double>(smoother_->mode());
+    status["homography_consecutive_failures"] = homography_altimeter_
+        ? double(homography_altimeter_->consecutiveFailures())
+        : 0.0;
+    status["track_total"] = double(last_track_total_);
+    status["track_inliers"] = double(last_track_inliers_);
+    status["homography_attempted"] = last_homography_attempted_ ? 1.0 : 0.0;
+    status["homography_succeeded"] = last_homography_succeeded_ ? 1.0 : 0.0;
     
     auto smoother_info = smoother_->getDebugInfo();
     for (const auto& [k, v] : smoother_info) {
         status["smoother_" + k] = v;
+    }
+
+    // Expose last homography constraint metrics (critical for debugging "stuck altitude")
+    if (last_constraint_) {
+        status["homography_log_s"] = last_constraint_->log_s;
+        status["homography_s"] = last_constraint_->s;
+        status["homography_sigma_r"] = last_constraint_->sigma_r;
+
+        for (const auto& [k, v] : last_constraint_->metrics) {
+            status["homography_metric_" + k] = v;
+        }
+    } else {
+        // Sentinel values when no constraint is available
+        status["homography_log_s"] = 0.0;
+        status["homography_s"] = 1.0;
+        status["homography_sigma_r"] = std::numeric_limits<double>::infinity();
     }
     
     return status;

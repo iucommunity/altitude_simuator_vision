@@ -341,6 +341,20 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
         proc_result.time_ms = frame_time_ms;
         results.push_back(proc_result);
         
+        // Debug: print homography scale info to diagnose "stuck at anchor"
+        // (Uses RealtimeAltimeter::getStatus() → AltitudeEstimationSystem::getStatus())
+        auto status = altimeter->getStatus();
+        double s = status.count("homography_s") ? status["homography_s"] : 1.0;
+        double log_s = status.count("homography_log_s") ? status["homography_log_s"] : 0.0;
+        double dot_nu = status.count("homography_metric_dot_nu") ? status["homography_metric_dot_nu"] : 0.0;
+        double rmse_px = status.count("homography_metric_rmse_px") ? status["homography_metric_rmse_px"] : 0.0;
+        double nin = status.count("homography_metric_n_inliers") ? status["homography_metric_n_inliers"] : 0.0;
+        double gate = status.count("homography_metric_gate_failed") ? status["homography_metric_gate_failed"] : 0.0;
+        double trk = status.count("track_total") ? status["track_total"] : 0.0;
+        double trk_inl = status.count("track_inliers") ? status["track_inliers"] : 0.0;
+        double h_att = status.count("homography_attempted") ? status["homography_attempted"] : 0.0;
+        double h_ok = status.count("homography_succeeded") ? status["homography_succeeded"] : 0.0;
+
         // Print progress
         if (i < 30 || i % 50 == 0 || i == n_frames - 1) {
             std::cout << std::left << std::setw(8) << i
@@ -349,7 +363,18 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
                       << std::setw(10) << std::showpos << error << std::noshowpos
                       << std::setw(8) << result.mode
                       << std::setw(8) << result.sigma_m
-                      << std::setw(8) << frame_time_ms << "\n";
+                      << std::setw(8) << frame_time_ms
+                      << "  s=" << std::fixed << std::setprecision(4) << s
+                      << " log_s=" << std::fixed << std::setprecision(6) << log_s
+                      << " dot=" << std::fixed << std::setprecision(5) << dot_nu
+                      << " rmse=" << std::fixed << std::setprecision(3) << rmse_px
+                      << " inl=" << int(nin)
+                      << " gate=" << std::fixed << std::setprecision(1) << gate
+                      << " trk=" << int(trk)
+                      << " trk_inl=" << int(trk_inl)
+                      << " h_att=" << int(h_att)
+                      << " h_ok=" << int(h_ok)
+                      << "\n";
         }
     }
     
