@@ -81,4 +81,3 @@ private:
 };
 
 } // namespace altitude_estimator
-

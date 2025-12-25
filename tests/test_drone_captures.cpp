@@ -245,13 +245,25 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
     int height = sample_img.rows;
     std::cout << "Image size: " << width << "x" << height << "\n";
     
-    // Get camera tilt from metadata
-    double camera_tilt = matched_data[0].second.pitch;
-    std::cout << "Camera tilt: " << camera_tilt << "°\n";
+    // Camera tilt angle below horizontal (fixed mount)
+    // NOTE: metadata.json contains BODY frame RPY (drone attitude), NOT camera angle
+    // The filename contains camera orientation (e.g. P55.6 = 55.6° down from horizontal)
+    // For this dataset, camera is mounted ~60° below horizontal
+    double camera_tilt = 60.0;  // Fixed camera mount angle
+    std::cout << "Camera tilt: " << camera_tilt << "° (fixed mount)\n";
+    
+    // Log first frame's body attitude for reference
+    std::cout << "First frame body RPY: pitch=" << matched_data[0].second.pitch 
+              << "°, yaw=" << matched_data[0].second.yaw
+              << "°, roll=" << matched_data[0].second.roll << "°\n";
     
     // Compute intrinsics
-    double fx, fy, cx, cy;
-    computeIntrinsics(width, height, fx, fy, cx, cy);
+    double fx = 1.314244571317552072e+03;
+    double fy = 1.309240459060462172e+03;
+    double cx = 6.515886957943532707e+02;
+    double cy = 3.829368142604757281e+02;
+    // double fx, fy, cx, cy;
+    // computeIntrinsics(width, height, fx, fy, cx, cy);
     std::cout << "Camera Intrinsics: fx=" << fx << ", fy=" << fy 
               << ", cx=" << cx << ", cy=" << cy << "\n";
     
@@ -292,8 +304,8 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
         double gt_altitude = meta.height;
         
         // DATASET-SPECIFIC: Level flight assumption
-        double roll_deg_gt = 0.0;
-        double pitch_deg_gt = 0.0;
+        double roll_deg_gt = meta.roll;
+        double pitch_deg_gt = meta.pitch;
         double yaw_deg_gt = meta.yaw;
         
         // Convert to radians
@@ -366,26 +378,42 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
         double h_att = status.count("homography_attempted") ? status["homography_attempted"] : 0.0;
         double h_ok = status.count("homography_succeeded") ? status["homography_succeeded"] : 0.0;
 
-        // Print progress
+        // Print progress - compact format with track inlier count
         if (i < 30 || i % 50 == 0 || i == n_frames - 1) {
+            // Gate failure codes: 1=min_pts, 2=findH_fail, 3=min_inl, 4=cov, 5=rmse, 
+            //                     6=decomp, 7=no_cand, 8=rank1, 9=scale, 10=ground_like
+            std::string gate_name = "";
+            if (gate >= 1 && gate < 2) gate_name = "min_pts";
+            else if (gate >= 2 && gate < 3) gate_name = "findH";
+            else if (gate >= 3 && gate < 4) gate_name = "min_inl";
+            else if (gate >= 4 && gate < 5) gate_name = "cov";
+            else if (gate >= 5 && gate < 6) gate_name = "rmse";
+            else if (gate >= 6 && gate < 7) gate_name = "decomp";
+            else if (gate >= 7 && gate < 8) gate_name = "cand";
+            else if (gate >= 8 && gate < 9) gate_name = "rank1";
+            else if (gate >= 9 && gate < 10) gate_name = "scale";
+            else if (gate >= 10) gate_name = "ground";
+            
             std::cout << std::left << std::setw(8) << i
                       << std::setw(10) << std::fixed << std::setprecision(1) << gt_altitude
                       << std::setw(10) << result.altitude_m
                       << std::setw(10) << std::showpos << error << std::noshowpos
                       << std::setw(8) << result.mode
-                      << std::setw(8) << result.sigma_m
-                      << std::setw(8) << frame_time_ms
-                      << "  s=" << std::fixed << std::setprecision(4) << s
-                      << " log_s=" << std::fixed << std::setprecision(6) << log_s
-                      << " dot=" << std::fixed << std::setprecision(5) << dot_nu
-                      << " rmse=" << std::fixed << std::setprecision(3) << rmse_px
-                      << " inl=" << int(nin)
-                      << " gate=" << std::fixed << std::setprecision(1) << gate
-                      << " trk=" << int(trk)
-                      << " trk_inl=" << int(trk_inl)
-                      << " h_att=" << int(h_att)
-                      << " h_ok=" << int(h_ok)
-                      << "\n";
+                      << std::setw(8) << std::fixed << std::setprecision(1) << result.sigma_m
+                      << "trk=" << int(trk) << "/" << int(trk_inl)
+                      << " h_inl=" << int(nin)
+                      << " s=" << std::fixed << std::setprecision(3) << s;
+            
+            if (h_att) {
+                if (h_ok) {
+                    std::cout << " OK";
+                } else {
+                    std::cout << " FAIL:" << gate_name;
+                }
+            } else {
+                std::cout << " SKIP";
+            }
+            std::cout << "\n";
         }
     }
     

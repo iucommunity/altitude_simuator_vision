@@ -215,6 +215,12 @@ std::map<std::string, double> AltitudeEstimationSystem::getStatus() const {
         status["homography_log_s"] = 0.0;
         status["homography_s"] = 1.0;
         status["homography_sigma_r"] = std::numeric_limits<double>::infinity();
+        
+        // Expose FAIL metrics when constraint failed
+        auto fail_metrics = homography_altimeter_->lastFailMetrics();
+        for (const auto& [k, v] : fail_metrics) {
+            status["homography_metric_" + k] = v;
+        }
     }
     
     return status;

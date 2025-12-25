@@ -229,4 +229,3 @@ std::unique_ptr<RealtimeAltimeter> createAltimeter(
 }
 
 } // namespace altitude_estimator
-

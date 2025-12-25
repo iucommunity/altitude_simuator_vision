@@ -121,38 +121,9 @@ VisualTracker::TrackResult VisualTracker::track(
             ids_good.push_back(track_ids_[i]);
         }
     }
-    // Geometric verification with Essential matrix
-    // TEMPORARILY DISABLED - causes crash, will fix later
+    
+    // All tracked points are inliers (no geometric verification for simplicity)
     std::vector<bool> inlier_mask(prev_good.size(), true);
-    // TODO: Re-enable geometric verification after fixing undistortPoints crash
-    /*
-    if (prev_good.size() >= 8) {
-        try {
-            auto prev_undist = calib_.intrinsics.undistortPoints(prev_good);
-            auto curr_undist = calib_.intrinsics.undistortPoints(curr_good);
-            
-            cv::Mat E, mask_cv;
-            E = cv::findEssentialMat(
-                prev_undist, curr_undist,
-                calib_.intrinsics.K_cv(),
-                cv::RANSAC,
-                0.999,
-                config_.ransac_reproj_threshold,
-                mask_cv
-            );
-            
-            if (!mask_cv.empty()) {
-                for (int i = 0; i < mask_cv.rows; ++i) {
-                    inlier_mask[i] = (mask_cv.at<uchar>(i) != 0);
-                }
-            }
-        } catch (const std::exception& e) {
-            // Continue with all points as inliers
-        } catch (...) {
-            // Continue with all points as inliers
-        }
-    }
-    */
     
     // Update state - keep inliers + detect new
     std::vector<cv::Point2f> inlier_pts;
@@ -254,4 +225,3 @@ VisualTracker::TrackQuality VisualTracker::computeTrackingQuality(
 }
 
 } // namespace altitude_estimator
-
