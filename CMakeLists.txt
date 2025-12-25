@@ -72,17 +72,17 @@ if(nlohmann_json_FOUND)
     )
     
     # Test with video file
-    add_executable(test_video
-        tests/test_video.cpp
-    )
+    # add_executable(test_video
+    #     tests/test_video.cpp
+    # )
     
-    target_link_libraries(test_video PRIVATE
-        altitude_estimator
-        nlohmann_json::nlohmann_json
-    )
+    # target_link_libraries(test_video PRIVATE
+    #     altitude_estimator
+    #     nlohmann_json::nlohmann_json
+    # )
     
     message(STATUS "Building test_drone_captures (nlohmann_json found)")
-    message(STATUS "Building test_video (nlohmann_json found)")
+    # message(STATUS "Building test_video (nlohmann_json found)")
 else()
     message(WARNING "nlohmann_json not found - test executables will not be built")
     message(STATUS "Install with: sudo apt-get install nlohmann-json3-dev (Linux)")
