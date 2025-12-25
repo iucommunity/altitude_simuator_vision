@@ -379,42 +379,42 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
         double h_ok = status.count("homography_succeeded") ? status["homography_succeeded"] : 0.0;
 
         // Print progress - compact format with track inlier count
-        if (i < 30 || i % 50 == 0 || i == n_frames - 1) {
+        // if (i < 30 || i % 50 == 0 || i == n_frames - 1) {
             // Gate failure codes: 1=min_pts, 2=findH_fail, 3=min_inl, 4=cov, 5=rmse, 
             //                     6=decomp, 7=no_cand, 8=rank1, 9=scale, 10=ground_like
-            std::string gate_name = "";
-            if (gate >= 1 && gate < 2) gate_name = "min_pts";
-            else if (gate >= 2 && gate < 3) gate_name = "findH";
-            else if (gate >= 3 && gate < 4) gate_name = "min_inl";
-            else if (gate >= 4 && gate < 5) gate_name = "cov";
-            else if (gate >= 5 && gate < 6) gate_name = "rmse";
-            else if (gate >= 6 && gate < 7) gate_name = "decomp";
-            else if (gate >= 7 && gate < 8) gate_name = "cand";
-            else if (gate >= 8 && gate < 9) gate_name = "rank1";
-            else if (gate >= 9 && gate < 10) gate_name = "scale";
-            else if (gate >= 10) gate_name = "ground";
-            
-            std::cout << std::left << std::setw(8) << i
-                      << std::setw(10) << std::fixed << std::setprecision(1) << gt_altitude
-                      << std::setw(10) << result.altitude_m
-                      << std::setw(10) << std::showpos << error << std::noshowpos
-                      << std::setw(8) << result.mode
-                      << std::setw(8) << std::fixed << std::setprecision(1) << result.sigma_m
-                      << "trk=" << int(trk) << "/" << int(trk_inl)
-                      << " h_inl=" << int(nin)
-                      << " s=" << std::fixed << std::setprecision(3) << s;
-            
-            if (h_att) {
-                if (h_ok) {
-                    std::cout << " OK";
-                } else {
-                    std::cout << " FAIL:" << gate_name;
-                }
+        std::string gate_name = "";
+        if (gate >= 1 && gate < 2) gate_name = "min_pts";
+        else if (gate >= 2 && gate < 3) gate_name = "findH";
+        else if (gate >= 3 && gate < 4) gate_name = "min_inl";
+        else if (gate >= 4 && gate < 5) gate_name = "cov";
+        else if (gate >= 5 && gate < 6) gate_name = "rmse";
+        else if (gate >= 6 && gate < 7) gate_name = "decomp";
+        else if (gate >= 7 && gate < 8) gate_name = "cand";
+        else if (gate >= 8 && gate < 9) gate_name = "rank1";
+        else if (gate >= 9 && gate < 10) gate_name = "scale";
+        else if (gate >= 10) gate_name = "ground";
+        
+        std::cout << std::left << std::setw(8) << i
+                    << std::setw(10) << std::fixed << std::setprecision(1) << gt_altitude
+                    << std::setw(10) << result.altitude_m
+                    << std::setw(10) << std::showpos << error << std::noshowpos
+                    << std::setw(8) << result.mode
+                    << std::setw(8) << std::fixed << std::setprecision(1) << result.sigma_m
+                    << "trk=" << int(trk) << "/" << int(trk_inl)
+                    << " h_inl=" << int(nin)
+                    << " s=" << std::fixed << std::setprecision(3) << s;
+        
+        if (h_att) {
+            if (h_ok) {
+                std::cout << " OK";
             } else {
-                std::cout << " SKIP";
+                std::cout << " FAIL:" << gate_name;
             }
-            std::cout << "\n";
+        } else {
+            std::cout << " SKIP";
         }
+        std::cout << "\n";
+        // }
     }
     
     auto total_end = std::chrono::high_resolution_clock::now();
