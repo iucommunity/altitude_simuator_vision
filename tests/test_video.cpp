@@ -22,6 +22,7 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <random>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -58,7 +59,7 @@ struct FrameResult {
 // ============================================================================
 
 /**
- * Load metadata.json
+ * Load metadata.json with random noise on yaw and roll (±3 degrees)
  */
 std::vector<MetadataEntry> loadMetadata(const fs::path& metadata_path) {
     if (!fs::exists(metadata_path)) {
@@ -69,14 +70,26 @@ std::vector<MetadataEntry> loadMetadata(const fs::path& metadata_path) {
     json j;
     file >> j;
     
+    // Random noise generator: ±3 degrees
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> noise_dist(-3.0, 3.0);
+    
     std::vector<MetadataEntry> entries;
     for (const auto& item : j) {
         MetadataEntry entry;
         entry.filename = item["filename"];
         entry.height = item["height"];
         entry.pitch = item["pitch"];
-        entry.yaw = item["yaw"];
-        entry.roll = item.value("roll", item["yaw"]);
+        
+        // Base yaw and roll from metadata
+        double base_yaw = item["yaw"];
+        double base_roll = item.value("roll", 0.0);  // Default roll to 0 if not present
+        
+        // Add random noise ±3 degrees
+        entry.yaw = base_yaw + noise_dist(gen);
+        entry.roll = base_roll + noise_dist(gen);
+        
         entries.push_back(entry);
     }
     
