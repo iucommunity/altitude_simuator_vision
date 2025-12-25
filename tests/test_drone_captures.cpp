@@ -171,7 +171,7 @@ void printStatistics(const std::vector<ProcessingResult>& results) {
         sum_abs += std::abs(e);
     }
     
-    double mean_error = sum / errors.size();
+    double mean_error = sum_abs / errors.size();
     double std_error = std::sqrt(sum_sq / errors.size() - mean_error * mean_error);
     double mae = sum_abs / errors.size();
     double rmse = std::sqrt(sum_sq / errors.size());
