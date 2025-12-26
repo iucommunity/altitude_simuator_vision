@@ -36,6 +36,7 @@ include_directories(
 add_library(altitude_estimator STATIC
     src/coordinate_frames.cpp
     src/calibration.cpp
+    src/image_undistorter.cpp
     src/rotation_provider.cpp
     src/visual_tracker.cpp
     src/homography_altimeter.cpp

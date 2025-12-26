@@ -18,6 +18,7 @@ namespace altitude_estimator {
 
 // Forward declarations
 class AltitudeEstimationSystem;
+class ImageUndistorter;
 
 /**
  * @brief Production-ready real-time altitude estimator
@@ -63,13 +64,15 @@ public:
      *                        60° means camera points 60° down from horizontal
      * @param init_frames Number of frames with known altitude for initialization
      * @param fps Expected frame rate (for timing)
+     * @param dist_coeffs Distortion coefficients (k1, k2, p1, p2, k3)
      */
     RealtimeAltimeter(
         const Eigen::Matrix3d& K,
         const cv::Size& image_size,
         double camera_tilt_deg = 60.0,
         int init_frames = 10,
-        double fps = 30.0
+        double fps = 30.0,
+        const std::vector<double>& dist_coeffs = {}
     );
     
     ~RealtimeAltimeter();
@@ -167,6 +170,7 @@ private:
     int init_count_ = 0;
     bool is_initialized_ = false;
     
+    std::unique_ptr<ImageUndistorter> undistorter_;
     std::unique_ptr<AltitudeEstimationSystem> system_;
 };
 
@@ -179,6 +183,7 @@ private:
  * @param camera_tilt_deg Camera tilt below horizontal (degrees)
  * @param init_frames Number of frames with known altitude for init
  * @param fps Expected frame rate
+ * @param dist_coeffs Distortion coefficients (k1, k2, p1, p2, k3) - empty for no distortion
  * @return Configured RealtimeAltimeter instance
  */
 std::unique_ptr<RealtimeAltimeter> createAltimeter(
@@ -190,7 +195,8 @@ std::unique_ptr<RealtimeAltimeter> createAltimeter(
     int image_height,
     double camera_tilt_deg = 60.0,
     int init_frames = 10,
-    double fps = 30.0
+    double fps = 30.0,
+    const std::vector<double>& dist_coeffs = {}
 );
 
 } // namespace altitude_estimator

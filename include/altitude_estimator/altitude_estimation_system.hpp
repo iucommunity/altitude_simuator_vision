@@ -69,6 +69,16 @@ public:
      */
     const Config& config() const { return cfg_; }
     
+    /**
+     * @brief Get the timestamp of the last processed frame
+     */
+    double lastTimestamp() const { return last_timestamp_; }
+    
+    /**
+     * @brief Access smoother for re-anchoring
+     */
+    FixedLagLogDistanceSmoother* smoother() { return smoother_.get(); }
+    
 private:
     void completeInitialization();
     

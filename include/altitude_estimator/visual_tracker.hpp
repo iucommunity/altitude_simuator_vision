@@ -63,11 +63,6 @@ public:
 private:
     std::vector<cv::Point2f> detectFeatures(const cv::Mat& gray);
     
-    std::vector<cv::Point2f> predictFeaturePositions(
-        const std::vector<cv::Point2f>& pts,
-        const Eigen::Matrix3d& R_rel
-    );
-    
     const CalibrationData& calib_;
     Config config_;  // Store by value, not reference!
     

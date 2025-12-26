@@ -129,17 +129,25 @@ std::vector<std::pair<fs::path, MetadataEntry>> matchImagesToMetadata(
 }
 
 /**
- * Compute camera intrinsics from Unity Physical Camera model
+ * Compute camera intrinsics from FOV (Field of View)
+ * 
+ * @param width Image width in pixels
+ * @param height Image height in pixels
+ * @param hFOV_deg Horizontal field of view in degrees
+ * @param vFOV_deg Vertical field of view in degrees
+ * @param fx, fy, cx, cy Output intrinsic parameters
  */
-void computeIntrinsics(int width, int height, 
-                       double& fx, double& fy, double& cx, double& cy) {
-    // Unity Physical Camera with Gate Fit = Horizontal
-    const double sensor_width_mm = 36.0;
-    const double focal_length_mm = 20.78461;
+void computeIntrinsicsFromFOV(int width, int height, 
+                              double hFOV_deg, double vFOV_deg,
+                              double& fx, double& fy, double& cx, double& cy) {
+    // Convert FOV to radians
+    double hFOV_rad = hFOV_deg * M_PI / 180.0;
+    double vFOV_rad = vFOV_deg * M_PI / 180.0;
     
-    double sensor_height_eff = sensor_width_mm * height / width;
-    fx = focal_length_mm * width / sensor_width_mm;
-    fy = focal_length_mm * height / sensor_height_eff;
+    // fx = (width / 2) / tan(hFOV / 2)
+    // fy = (height / 2) / tan(vFOV / 2)
+    fx = (width / 2.0) / std::tan(hFOV_rad / 2.0);
+    fy = (height / 2.0) / std::tan(vFOV_rad / 2.0);
     cx = width / 2.0;
     cy = height / 2.0;
 }
@@ -171,9 +179,10 @@ void printStatistics(const std::vector<ProcessingResult>& results) {
         sum_abs += std::abs(e);
     }
     
-    double mean_error = sum_abs / errors.size();
-    double std_error = std::sqrt(sum_sq / errors.size() - mean_error * mean_error);
-    double mae = sum_abs / errors.size();
+    double mean_error = sum / errors.size();  // Signed mean (bias)
+    double variance = sum_sq / errors.size() - mean_error * mean_error;
+    double std_error = std::sqrt(std::max(0.0, variance));  // Protect against numerical issues
+    double mae = sum_abs / errors.size();  // Mean Absolute Error
     double rmse = std::sqrt(sum_sq / errors.size());
     
     double mean_pct = 0;
@@ -257,22 +266,46 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
               << "°, yaw=" << matched_data[0].second.yaw
               << "°, roll=" << matched_data[0].second.roll << "°\n";
     
-    // Compute intrinsics
-    double fx = 1.314244571317552072e+03;
-    double fy = 1.309240459060462172e+03;
-    double cx = 6.515886957943532707e+02;
-    double cy = 3.829368142604757281e+02;
-    // double fx, fy, cx, cy;
-    // computeIntrinsics(width, height, fx, fy, cx, cy);
+    // =========================================================================
+    // CAMERA CALIBRATION PARAMETERS - UPDATE THESE WITH YOUR VALUES
+    // =========================================================================
+    
+    // Field of View (degrees)
+    double hFOV_deg = 82.6;   // Horizontal FOV - UPDATE THIS
+    double vFOV_deg = 55.4;   // Vertical FOV - UPDATE THIS
+    
+    // Distortion coefficients (k1, k2, p1, p2, k3)
+    std::vector<double> dist_coeffs = {
+        0.0,    // k1 - UPDATE THIS
+        0.0,    // k2 - UPDATE THIS
+        0.0,    // p1 - UPDATE THIS
+        0.0,    // p2 - UPDATE THIS
+        0.0     // k3 - UPDATE THIS
+    };
+    
+    // =========================================================================
+    
+    // Compute intrinsics from FOV
+    double fx, fy, cx, cy;
+    computeIntrinsicsFromFOV(width, height, hFOV_deg, vFOV_deg, fx, fy, cx, cy);
+    
+    std::cout << "Camera FOV: hFOV=" << hFOV_deg << "°, vFOV=" << vFOV_deg << "°\n";
     std::cout << "Camera Intrinsics: fx=" << fx << ", fy=" << fy 
               << ", cx=" << cx << ", cy=" << cy << "\n";
+    if (dist_coeffs[0] != 0.0 || dist_coeffs[1] != 0.0) {
+        std::cout << "Distortion: k1=" << dist_coeffs[0] << ", k2=" << dist_coeffs[1]
+                  << ", p1=" << dist_coeffs[2] << ", p2=" << dist_coeffs[3]
+                  << ", k3=" << dist_coeffs[4] << "\n";
+    } else {
+        std::cout << "Distortion: none (undistorted images)\n";
+    }
     
     std::cout << "Init frames: " << init_frames << " (known altitude)\n";
     
     // Create altimeter
     double fps = 30.0;
     auto altimeter = createAltimeter(fx, fy, cx, cy, width, height,
-                                     camera_tilt, init_frames, fps);
+                                     camera_tilt, init_frames, fps, dist_coeffs);
     
     // Track results
     std::vector<ProcessingResult> results;
@@ -365,12 +398,8 @@ int runTest(const fs::path& folder, int init_frames = 10, int max_frames = -1) {
         results.push_back(proc_result);
         
         // Debug: print homography scale info to diagnose "stuck at anchor"
-        // (Uses RealtimeAltimeter::getStatus() → AltitudeEstimationSystem::getStatus())
         auto status = altimeter->getStatus();
         double s = status.count("homography_s") ? status["homography_s"] : 1.0;
-        double log_s = status.count("homography_log_s") ? status["homography_log_s"] : 0.0;
-        double dot_nu = status.count("homography_metric_dot_nu") ? status["homography_metric_dot_nu"] : 0.0;
-        double rmse_px = status.count("homography_metric_rmse_px") ? status["homography_metric_rmse_px"] : 0.0;
         double nin = status.count("homography_metric_n_inliers") ? status["homography_metric_n_inliers"] : 0.0;
         double gate = status.count("homography_metric_gate_failed") ? status["homography_metric_gate_failed"] : 0.0;
         double trk = status.count("track_total") ? status["track_total"] : 0.0;
