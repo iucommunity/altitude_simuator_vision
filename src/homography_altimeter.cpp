@@ -263,7 +263,14 @@ std::optional<HomographyConstraint> HomographyAltimeter::computeConstraint(
     // For candidate filtering, Python uses s = 1 - dot, but final scale uses 1 + sign * dot
     double dot_nu = selection.n_cam.dot(selection.u);
     double s = 1.0 + config_.homography_sign_convention * dot_nu;
+    double log_s = std::log(s);
     
+    // DEAD-ZONE: If scale change is below noise floor, treat as no change
+    const double log_s_deadzone = 0.01;  // ~0.5% altitude change threshold
+    if (std::abs(log_s) < log_s_deadzone) {
+        log_s = 0.0;  // No detectable altitude change
+    }
+
     metrics["dot_nu"] = dot_nu;
     metrics["s_raw"] = s;
     
@@ -298,7 +305,8 @@ std::optional<HomographyConstraint> HomographyAltimeter::computeConstraint(
     
     HomographyConstraint constraint;
     constraint.s = s;
-    constraint.log_s = std::log(s);
+    // constraint.log_s = std::log(s);
+    constraint.log_s = log_s;
     constraint.sigma_r = sigma_r;
     constraint.n_cam = selection.n_cam;
     constraint.R_rel = selection.R_rel;
